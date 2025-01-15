@@ -1,9 +1,11 @@
-from flask import Flask, request, jsonify
+from flask import Flask, render_template
+from flask_socketio import SocketIO, send
 import subprocess
 import random
 import os
 
 app = Flask(__name__)
+socketio = SocketIO(app)
 
 # اسم الملف المستخدم لحفظ المعرفات والأسماء
 ID_FILE = "searched_ids.txt"
@@ -29,6 +31,21 @@ def generate_unique_id(serial):
         return serial[:12]
     unique_id = serial + ''.join(random.choices('0123456789', k=12 - len(serial)))
     return unique_id
+
+@app.route('/')
+def index():
+    """
+    نقطة الوصول الرئيسية لعرض واجهة المستخدم.
+    """
+    return render_template('index.html')  # هذا الملف سيكون واجهة الويب
+
+@socketio.on('message')
+def handle_message(msg):
+    """
+    التعامل مع الرسائل الواردة عبر الـ WebSocket.
+    """
+    print('Received message: ' + msg)
+    send(msg, broadcast=True)  # إرسال الرسالة لجميع المتصلين
 
 @app.route('/generate_id', methods=['GET'])
 def generate_id():
@@ -90,13 +107,6 @@ def load_searched_ids():
         print(f"Error loading searched IDs: {e}")
         return jsonify({"error": "Failed to load IDs"}), 500
 
-@app.route('/', methods=['GET'])
-def home():
-    """
-    نقطة الوصول الرئيسية لاختبار الخادم.
-    """
-    return jsonify({"message": "Server is running successfully!"}), 200
-
-if __name__ == "__main__":
-    # تشغيل التطبيق على المنفذ الافتراضي
-    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 5000)))
+if __name__ == '__main__':
+    # تشغيل التطبيق مع دعم WebSockets
+    socketio.run(app, host='0.0.0.0', port=5000)
