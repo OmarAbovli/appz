@@ -1,4 +1,4 @@
 psutil
 Flask
 gunicorn
-
+flask-socketio
